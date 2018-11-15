@@ -2,24 +2,38 @@
   "name": "egg-ratelimiter",
   "version": "0.0.1",
   "description": "Abstract rate limiter for eggjs",
-  "main": "index.js",
-  "scripts": {
-    "test": "npm run test"
+  "eggPlugin": {
+    "name": "ratelimiter"
+  },
+  "dependencies": {
+    "ratelimiter": "^3.2.0",
+    "ms": "^2.1.1",
+    "debug": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/ms": "^0.7.30",
+    "@types/ratelimiter": "^2.1.28",
+    "@types/debug": "0.0.31"
+  },
+  "keywords": [
+    "egg",
+    "ratelimiter",
+    "egg-ratelimiter"
+  ],
+  "engines": {
+    "node": ">=8.9.0"
+  },
+  "ci": {
+    "version": "8, 9"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ZQun/egg-ratelimiter.git"
   },
-  "keywords": [
-    "egg-ratelimiter"
-  ],
   "author": "https://github.com/ZQun",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/ZQun/egg-ratelimiter/issues"
   },
-  "homepage": "https://github.com/ZQun/egg-ratelimiter#readme",
-  "dependencies": {
-    "ratelimiter": "^3.2.0"
-  }
+  "homepage": "https://github.com/ZQun/egg-ratelimiter#readme"
 }
