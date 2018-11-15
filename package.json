@@ -1,6 +1,6 @@
 {
   "name": "egg-ratelimiter",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Abstract rate limiter for eggjs",
   "eggPlugin": {
     "name": "ratelimiter"
