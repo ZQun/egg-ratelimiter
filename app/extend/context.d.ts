@@ -1,4 +1,4 @@
 declare const _default: {
-    limit(config: any): void;
+    Limit(opts?: any): Promise<boolean>;
 };
 export = _default;

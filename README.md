@@ -2,8 +2,8 @@
 
 Rate limiter for Egg.js backed by Redis.
 
-- 暂时仅支持typescript
-- js版敬请关注，后续将完善在Controller控制器内分别配置访问速率限制
+- 支持egg [js] [ts]
+- 支持Controller控制器内分别配置访问速率限制
 
 ## Install
 
@@ -13,7 +13,7 @@ $ npm i egg-ratelimiter --save
 
 ## Configuration
 
-Change `${app_root}/config/plugin.js` to enable ratelimiter plugin:
+Change `${app_root}/config/plugin.ts` to enable ratelimiter plugin:
 
 ```typescript
 export = {
@@ -30,19 +30,19 @@ Configure ratelimiter information in `${app_root}/config/config.default.ts`:
 
 ```typescript
 config.ratelimiter = {
-    db: {},
+    db: {},//如已配置egg-redis 可删除此配置
     router: [
       {
-        path: '/',//限制路由路径
+        path: '/',//限制路由路径 此规则不会匹配(index.html?id=1)[http://url/index.html?id=1]
         max: 5,
-        duration: 7000, //ms
-        errorMessage: 'Custom request overrun error message'//自定义请求超限错误信息
+        time: '7s', //时间单位 s m h d y ...
+        message: 'Custom request overrun error message'//自定义请求超限错误信息
       },
       {
-        path: '/abc',
+        path: '/api',
         max: 5,
-        duration: 7000, //ms
-        errorMessage: 'Custom request overrun error message'
+        time: '7s', //时间单位 s m h d y ...
+        message: 'Custom request overrun error message'//自定义请求超限错误信息
       }
     ]
 }
@@ -56,6 +56,43 @@ config.redis = {
       db: 0,
     },
 }
+```
+
+Configure ratelimiter information in `${app_root}/app/controller/home.ts`:
+
+**Controller**
+
+```typescript
+export class HomeController {
+
+  @get('/index')
+  public async index(ctx?): Promise<void> {
+    const { ctx, service } = this;
+
+    // 超出速率限制返回判断
+    // [true]为超出速率限制   [false]则继续向下执行
+    // js返回方法为 ctx.body = 'message'
+    if(await ctx.Limit({ max: 5, time: '5s' })) return 'Rate limit exceeded'
+
+
+    //...
+    //业务逻辑
+    //...
+
+
+    // 正常返回
+    return {
+      message: '正常数据返回',
+      data: [
+        {
+          name: 'lee',
+        }
+      ]
+    }
+  }
+}
+
+
 ```
 
 ## Questions & Suggestions

@@ -1,14 +1,48 @@
 "use strict";
+const Limiter = require("ratelimiter");
+const ms = require("ms");
+const debug = require('debug')('egg-ratelimiter');
+async function thenify(fn) {
+    return await new Promise((resolve, reject) => {
+        function callback(err, res) {
+            if (err)
+                return reject(err);
+            return resolve(res);
+        }
+        fn(callback);
+    });
+}
 module.exports = {
-    limit(config) {
-        const thls = this;
-        // console.log('thls:', thls)
-        // console.log('config:', config)
-        // for(let item in thls.response.ctx) {
-        //     console.log('->', item);
-        // }
-        // console.log('-------limit,hello', thls.app)
-        // return 'abc'
+    async Limit(opts = {}) {
+        const ctx = this;
+        const { remaining = 'X-RateLimit-Remaining', reset = 'X-RateLimit-Reset', total = 'X-RateLimit-Limit' } = ctx.app.config.ratelimiter.headers || {};
+        //通过ips获取 nginx代理层真实IP，需要配置 config.proxy = true;
+        const ips = ctx.ips.length > 0 ? ctx.ips[0] !== '127.0.0.1' ? ctx.ips[0] : ctx.ips[1] : ctx.ip;
+        const opt = opts; //请求路径['/']
+        opt.duration = ms(opt.time);
+        const id = ips;
+        if (id == null)
+            return false;
+        // initialize limiter
+        const limiter = new Limiter(Object.assign({}, opt, { id: `${id}:${ctx.url}`, db: ctx.app.config.ratelimiter.db || ctx.app.redis }));
+        // check limit
+        const limit = await thenify(limiter.get.bind(limiter));
+        // check if current call is legit
+        const calls = limit.remaining > 0 ? limit.remaining - 1 : 0;
+        // header fields
+        const headers = {
+            [remaining]: calls,
+            [reset]: limit.reset,
+            [total]: limit.total
+        };
+        ctx.set(headers);
+        debug('remaining %s/%s %s', calls, limit.total, id);
+        if (limit.remaining)
+            return false;
+        const after = (limit.reset - Date.now() / 1000) | 0;
+        ctx.set('Retry-After', after);
+        ctx.status = 429;
+        return true;
     },
 };
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29udGV4dC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uLy4uLy4uL3NyYy9saWIvcGx1Z2luL2VnZy1yYXRlbGltaXRlci9hcHAvZXh0ZW5kL2NvbnRleHQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLGlCQUFTO0lBQ0wsS0FBSyxDQUFDLE1BQU07UUFDUixNQUFNLElBQUksR0FBUSxJQUFJLENBQUM7UUFFdkIsNkJBQTZCO1FBQzdCLGlDQUFpQztRQUdqQyx1Q0FBdUM7UUFDdkMsK0JBQStCO1FBQy9CLElBQUk7UUFFSiw4Q0FBOEM7UUFDOUMsZUFBZTtJQUNuQixDQUFDO0NBRUosQ0FBQSJ9
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY29udGV4dC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uLy4uLy4uL3NyYy9saWIvcGx1Z2luL2VnZy1yYXRlbGltaXRlci9hcHAvZXh0ZW5kL2NvbnRleHQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLHVDQUF1QztBQUN2Qyx5QkFBMEI7QUFDMUIsTUFBTSxLQUFLLEdBQUksT0FBTyxDQUFDLE9BQU8sQ0FBQyxDQUFDLGlCQUFpQixDQUFDLENBQUM7QUFtRG5ELEtBQUssa0JBQWtCLEVBQUU7SUFDckIsT0FBTyxNQUFNLElBQUksT0FBTyxDQUFDLENBQUMsT0FBTyxFQUFFLE1BQU0sRUFBRSxFQUFFO1FBQzNDLGtCQUFrQixHQUFHLEVBQUUsR0FBRztZQUN4QixJQUFJLEdBQUc7Z0JBQUUsT0FBTyxNQUFNLENBQUMsR0FBRyxDQUFDLENBQUM7WUFDNUIsT0FBTyxPQUFPLENBQUMsR0FBRyxDQUFDLENBQUM7UUFDdEIsQ0FBQztRQUNELEVBQUUsQ0FBQyxRQUFRLENBQUMsQ0FBQztJQUNmLENBQUMsQ0FBQyxDQUFDO0FBQ1AsQ0FBQztBQXpERCxpQkFBUztJQUNMLEtBQUssQ0FBQyxLQUFLLENBQUMsT0FBWSxFQUFFO1FBQ3RCLE1BQU0sR0FBRyxHQUFRLElBQUksQ0FBQztRQUV0QixNQUFNLEVBQ0YsU0FBUyxHQUFHLHVCQUF1QixFQUNuQyxLQUFLLEdBQUcsbUJBQW1CLEVBQzNCLEtBQUssR0FBRyxtQkFBbUIsRUFDOUIsR0FBRyxHQUFHLENBQUMsR0FBRyxDQUFDLE1BQU0sQ0FBQyxXQUFXLENBQUMsT0FBTyxJQUFJLEVBQUUsQ0FBQztRQUU3QyxnREFBZ0Q7UUFDaEQsTUFBTSxHQUFHLEdBQUcsR0FBRyxDQUFDLEdBQUcsQ0FBQyxNQUFNLEdBQUcsQ0FBQyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQyxLQUFLLFdBQVcsQ0FBQyxDQUFDLENBQUMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQztRQUMvRixNQUFNLEdBQUcsR0FBRyxJQUFJLENBQUMsQ0FBQSxXQUFXO1FBQzVCLEdBQUcsQ0FBQyxRQUFRLEdBQUcsRUFBRSxDQUFDLEdBQUcsQ0FBQyxJQUFJLENBQUMsQ0FBQTtRQUMzQixNQUFNLEVBQUUsR0FBRyxHQUFHLENBQUM7UUFFZixJQUFJLEVBQUUsSUFBSSxJQUFJO1lBQUUsT0FBTyxLQUFLLENBQUM7UUFFN0IscUJBQXFCO1FBQ3JCLE1BQU0sT0FBTyxHQUFHLElBQUksT0FBTyxDQUN2QixNQUFNLENBQUMsTUFBTSxDQUFDLEVBQUUsRUFBRSxHQUFHLEVBQUUsRUFBRSxFQUFFLEVBQUUsR0FBRyxFQUFFLElBQUksR0FBRyxDQUFDLEdBQUcsRUFBRSxFQUFFLEVBQUUsRUFBRSxHQUFHLENBQUMsR0FBRyxDQUFDLE1BQU0sQ0FBQyxXQUFXLENBQUMsRUFBRSxJQUFJLEdBQUcsQ0FBQyxHQUFHLENBQUMsS0FBSyxFQUFFLENBQUMsQ0FDekcsQ0FBQztRQUVGLGNBQWM7UUFDZCxNQUFNLEtBQUssR0FBUSxNQUFNLE9BQU8sQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLElBQUksQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDO1FBRTVELGlDQUFpQztRQUNqQyxNQUFNLEtBQUssR0FBRyxLQUFLLENBQUMsU0FBUyxHQUFHLENBQUMsQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLFNBQVMsR0FBRyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUU1RCxnQkFBZ0I7UUFDaEIsTUFBTSxPQUFPLEdBQUc7WUFDWixDQUFDLFNBQVMsQ0FBQyxFQUFFLEtBQUs7WUFDbEIsQ0FBQyxLQUFLLENBQUMsRUFBRSxLQUFLLENBQUMsS0FBSztZQUNwQixDQUFDLEtBQUssQ0FBQyxFQUFFLEtBQUssQ0FBQyxLQUFLO1NBQ3ZCLENBQUM7UUFFRixHQUFHLENBQUMsR0FBRyxDQUFDLE9BQU8sQ0FBQyxDQUFDO1FBRWpCLEtBQUssQ0FBQyxvQkFBb0IsRUFBRSxLQUFLLEVBQUUsS0FBSyxDQUFDLEtBQUssRUFBRSxFQUFFLENBQUMsQ0FBQztRQUNwRCxJQUFJLEtBQUssQ0FBQyxTQUFTO1lBQUUsT0FBTyxLQUFLLENBQUM7UUFFbEMsTUFBTSxLQUFLLEdBQUcsQ0FBQyxLQUFLLENBQUMsS0FBSyxHQUFHLElBQUksQ0FBQyxHQUFHLEVBQUUsR0FBRyxJQUFJLENBQUMsR0FBRyxDQUFDLENBQUM7UUFDcEQsR0FBRyxDQUFDLEdBQUcsQ0FBQyxhQUFhLEVBQUUsS0FBSyxDQUFDLENBQUM7UUFDOUIsR0FBRyxDQUFDLE1BQU0sR0FBRyxHQUFHLENBQUM7UUFFakIsT0FBTyxJQUFJLENBQUM7SUFDaEIsQ0FBQztDQUNKLENBQUEifQ==
