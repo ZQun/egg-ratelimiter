@@ -66,7 +66,7 @@ Configure ratelimiter information in `${app_root}/app/controller/home.ts`:
 export class HomeController {
 
   @get('/index')
-  public async index(ctx?): Promise<void> {
+  public async index(ctx?): Promise<any> {
     const { ctx, service } = this;
 
     // 超出速率限制返回判断
