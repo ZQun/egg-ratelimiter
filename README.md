@@ -3,7 +3,7 @@
 Rate limiter for Egg.js backed by Redis.
 
 - 支持egg [js] [ts]
-- 支持Controller控制器内分别配置访问速率限制
+- 支持Controller控制器内分别配置请求速率限制
 
 ## Install
 
