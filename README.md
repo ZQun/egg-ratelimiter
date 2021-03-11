@@ -11,6 +11,12 @@ Rate limiter for Egg.js backed by Redis.
 $ npm i egg-ratelimiter --save
 ```
 
+你还需要安装[egg-redis](https://www.npmjs.com/package/egg-redis) 具体参考文档
+
+```shell
+npm i egg-redis --save
+```
+
 ## Configuration
 
 Change `${app_root}/config/plugin.ts` to enable ratelimiter plugin:
